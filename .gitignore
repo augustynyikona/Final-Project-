@@ -1,0 +1,44 @@
+# Flutter build and ephemeral artifacts
+**/build/
+**/.dart_tool/
+**/.dart_temp/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.pub-cache/
+**/.pub/
+**/ephemeral/
+*.iml
+.metadata
+
+# Android Studio / Gradle artifacts
+**/.gradle/
+**/local.properties
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+
+# Windows Junction shortcuts
+mobile/
+**/mobile/
+.git_backup/
+**/.git_backup/
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.class
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# Large archives and temporary dumps (>100MB)
+*.zip
+*.zip.*
+*.tar.gz
+*.rar
+*.log
+*.tmp
+hs_err_pid*.log
+scratch/
+**/scratch/

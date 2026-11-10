@@ -1,0 +1,55 @@
+<?php
+session_start();
+include '../config/db.php';
+
+header('Content-Type: application/json');
+
+if (!isset($_SESSION['user_id'])) {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized. Please sign in.']);
+    exit;
+}
+
+$user_id = $_SESSION['user_id'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $current_pass = $_POST['current_password'] ?? '';
+    $new_pass     = $_POST['new_password'] ?? '';
+    $confirm_pass = $_POST['confirm_password'] ?? '';
+
+    if (empty($current_pass) || empty($new_pass) || empty($confirm_pass)) {
+        echo json_encode(['success' => false, 'message' => 'All password fields are required.']);
+        exit;
+    }
+
+    if (strlen($new_pass) < 6) {
+        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters.']);
+        exit;
+    }
+
+    if ($new_pass !== $confirm_pass) {
+        echo json_encode(['success' => false, 'message' => 'New password and confirmation do not match.']);
+        exit;
+    }
+
+    // Verify current password
+    $stmt = $pdo->prepare("SELECT password_hash FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $current_hash = $stmt->fetchColumn();
+
+    if (!$current_hash || !password_verify($current_pass, $current_hash)) {
+        echo json_encode(['success' => false, 'message' => 'Current password entered is incorrect.']);
+        exit;
+    }
+
+    // Update to new password
+    $new_hash = password_hash($new_pass, PASSWORD_DEFAULT);
+    $updateStmt = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
+    if ($updateStmt->execute([$new_hash, $user_id])) {
+        echo json_encode(['success' => true, 'message' => 'Password updated successfully in real time!']);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Database error while updating password.']);
+    }
+    exit;
+}
+
+echo json_encode(['success' => false, 'message' => 'Invalid request method.']);
