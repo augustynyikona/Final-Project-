@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -25,6 +26,7 @@ $profile_pic = ($user_profile && !empty($user_profile['profile_pic']))
 
 // Handle Send Message
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
+    csrf_guard();
     $send_mode      = $_POST['send_mode'] ?? 'direct';
     $subject        = trim($_POST['subject'] ?? '');
     $body           = trim($_POST['body'] ?? '');
@@ -737,6 +739,7 @@ $current_date = date('l, d F Y');
                 </div>
 
                 <form method="POST" id="composeMessageForm">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="send_message">
                     <input type="hidden" name="send_mode" id="sendModeInput" value="direct">
                     

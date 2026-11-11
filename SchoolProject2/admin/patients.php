@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -12,6 +13,78 @@ $admin_name = $_SESSION['name'];
 
 // Search / Filter
 $search = trim($_GET['search'] ?? '');
+
+// ---- Register a new patient (guardian + child) ----
+$reg_success = $reg_error = $reg_temp_pass = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_patient') {
+    csrf_guard();
+    $g_name   = trim($_POST['guardian_name'] ?? '');
+    $g_phone  = preg_replace('/\D/', '', $_POST['guardian_phone'] ?? '');
+    $g_email  = trim($_POST['guardian_email'] ?? '');
+    $c_name   = trim($_POST['child_name'] ?? '');
+    $c_dob    = trim($_POST['date_of_birth'] ?? '');
+    $c_gender = $_POST['gender'] ?? '';
+
+    if ($g_name === '' || $g_phone === '' || $c_name === '' || $c_dob === ''
+        || !in_array($c_gender, ['Male', 'Female'], true)) {
+        $reg_error = 'Guardian name, phone, child name, date of birth and gender are all required.';
+    } elseif (!preg_match('/^\d{10}$/', $g_phone)) {
+        $reg_error = 'Guardian phone must be exactly 10 digits (e.g. 0970000101).';
+    } elseif ($g_email !== '' && !filter_var($g_email, FILTER_VALIDATE_EMAIL)) {
+        $reg_error = 'Guardian email address is not valid.';
+    } elseif (strtotime($c_dob) === false || strtotime($c_dob) > strtotime('today')) {
+        $reg_error = 'Child date of birth must be a valid date in the past.';
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $stmt = $pdo->prepare('SELECT id, role FROM users WHERE phone = ?');
+            $stmt->execute([$g_phone]);
+            $guardian = $stmt->fetch();
+
+            if ($guardian && $guardian['role'] !== 'guardian') {
+                throw new RuntimeException('That phone number already belongs to a '
+                    . $guardian['role'] . ' account. Use a different number.');
+            }
+
+            if ($guardian) {
+                $guardian_id = (int)$guardian['id'];
+            } else {
+                $reg_temp_pass = 'VC' . random_int(100000, 999999);
+                $ins = $pdo->prepare(
+                    "INSERT INTO users (name, phone, email, password_hash, role)
+                     VALUES (?, ?, ?, ?, 'guardian')"
+                );
+                $ins->execute([
+                    $g_name,
+                    $g_phone,
+                    $g_email !== '' ? $g_email : null,
+                    password_hash($reg_temp_pass, PASSWORD_DEFAULT),
+                ]);
+                $guardian_id = (int)$pdo->lastInsertId();
+                audit_log($pdo, 'guardian.created', 'user', $guardian_id, $g_name . ' (' . $g_phone . ')');
+            }
+
+            $insc = $pdo->prepare(
+                'INSERT INTO children (guardian_id, name, date_of_birth, gender) VALUES (?, ?, ?, ?)'
+            );
+            $insc->execute([$guardian_id, $c_name, $c_dob, $c_gender]);
+            $child_id = (int)$pdo->lastInsertId();
+
+            audit_log($pdo, 'patient.registered', 'child', $child_id,
+                $c_name . ' (guardian #' . $guardian_id . ')');
+
+            $pdo->commit();
+            $reg_success = "Registered {$c_name} under guardian {$g_name}.";
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            $reg_error = $e->getMessage();
+        }
+    }
+}
+
 
 $query = "
     SELECT c.id, c.name as child_name, c.date_of_birth, c.gender, u.name as guardian_name, u.phone as guardian_phone,
@@ -110,8 +183,11 @@ function calculateAge($dob) {
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -202,7 +278,82 @@ function calculateAge($dob) {
 
         <!-- Filter & Search Toolbar (Modern Premium) -->
         <div class="filter-card" style="padding:18px 24px; border-radius:18px; box-shadow:0 4px 20px rgba(112, 144, 176, 0.08); border:1px solid #e0e5f2; margin-bottom:24px;">
-            <form method="GET" class="filter-bar" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
+            <!-- Register new patient -->
+        <?php if ($reg_success || $reg_error): ?>
+        <div style="margin-bottom:18px; padding:14px 20px; border-radius:14px; font-size:13.5px; font-weight:600;
+                    border:1px solid <?= $reg_error ? '#fca5a5' : '#86efac' ?>;
+                    background:<?= $reg_error ? '#fef2f2' : '#f0fdf4' ?>;
+                    color:<?= $reg_error ? '#991b1b' : '#166534' ?>;">
+            <?= htmlspecialchars($reg_error ?: $reg_success) ?>
+            <?php if ($reg_temp_pass): ?>
+                <div style="font-weight:500; margin-top:6px;">
+                    Temporary guardian password:
+                    <strong><?= htmlspecialchars($reg_temp_pass) ?></strong>
+                    &mdash; share it once; it is not shown again.
+                </div>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+
+        <details style="margin-bottom:18px; background:#fff; border:1.5px solid #e2e8f0; border-radius:14px;">
+            <summary style="cursor:pointer; padding:16px 20px; font-weight:700; font-size:14px; color:#1B254B; list-style:none;">
+                <i class="fa-solid fa-user-plus" style="color:#2563eb; margin-right:8px;"></i>
+                Register New Patient (guardian + child)
+            </summary>
+            <form method="POST" style="padding:4px 20px 20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px;">
+                <?= csrf_field() ?>
+                <input type="hidden" name="action" value="create_patient">
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Guardian Full Name
+                    <input type="text" name="guardian_name" required placeholder="e.g. Grace Banda"
+                           style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                </label>
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Guardian Phone
+                    <input type="tel" name="guardian_phone" required placeholder="0970000101" pattern="\d{10}"
+                           style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                </label>
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Guardian Email (optional)
+                    <input type="email" name="guardian_email" placeholder="name@example.com"
+                           style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                </label>
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Child Full Name
+                    <input type="text" name="child_name" required placeholder="e.g. Tawonga Banda"
+                           style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                </label>
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Date of Birth
+                    <input type="date" name="date_of_birth" required max="<?= date('Y-m-d') ?>"
+                           style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                </label>
+
+                <label style="font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.4px;">
+                    Gender
+                    <select name="gender" required
+                            style="width:100%; margin-top:6px; height:42px; border-radius:10px; border:1.5px solid #e2e8f0; padding:0 12px; font-size:13.5px;">
+                        <option value="">Select…</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </label>
+
+                <div style="grid-column:1/-1; display:flex; justify-content:flex-end;">
+                    <button type="submit"
+                            style="height:44px; padding:0 26px; border:0; border-radius:11px; background:#1B254B; color:#fff; font-weight:700; font-size:13.5px; cursor:pointer;">
+                        <i class="fa-solid fa-check"></i> Register Patient
+                    </button>
+                </div>
+            </form>
+        </details>
+
+        <form method="GET" class="filter-bar" style="display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
                 <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:300px;">
                     <div class="filter-input-wrap" style="flex:1;">
                         <i class="fa-solid fa-magnifying-glass" style="left:16px; font-size:14px; color:#94a3b8;"></i>

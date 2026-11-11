@@ -91,8 +91,11 @@ $unread_msg_count = $stmt->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts

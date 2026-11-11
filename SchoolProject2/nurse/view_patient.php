@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -42,6 +43,7 @@ $age_str = ($diff->y > 0) ? $diff->y . ' yrs, ' . $diff->m . ' mos' : $diff->m .
 $success = '';
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'record') {
+    csrf_guard();
     $appt_id = $_POST['appointment_id'];
     $batch = trim($_POST['batch_number']);
     $site = $_POST['site'];
@@ -230,6 +232,7 @@ $unread_msg_count = $stmt->fetchColumn();
                                 <h3 class="mar-card-title">Record Administration: <?= htmlspecialchars($current_appt['vaccine_name']) ?></h3>
                             </div>
                             <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                 <input type="hidden" name="action" value="record">
                                 <input type="hidden" name="appointment_id" value="<?= $current_appt['id'] ?>">
                                 

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
     header("Location: ../auth/login.php");
@@ -28,6 +29,7 @@ $success_message = '';
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_guard();
     $action = $_POST['action'] ?? '';
     
     if ($action === 'update_profile') {
@@ -347,6 +349,7 @@ $pending_alerts = (int)$pdo->query("SELECT COUNT(*) FROM triage_referrals WHERE 
                     </div>
                     <div class="dr-card-body">
                         <form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                             <input type="hidden" name="action" value="upload_picture">
                             <div class="avatar-upload-box">
                                 <img src="<?= htmlspecialchars($profile_pic) ?>" alt="Doctor Avatar" class="avatar-preview">
@@ -373,6 +376,7 @@ $pending_alerts = (int)$pdo->query("SELECT COUNT(*) FROM triage_referrals WHERE 
                     </div>
                     <div class="dr-card-body">
                         <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                             <input type="hidden" name="action" value="update_profile">
 
                             <div class="form-control-wrap">
@@ -415,6 +419,7 @@ $pending_alerts = (int)$pdo->query("SELECT COUNT(*) FROM triage_referrals WHERE 
 
                 <div class="dr-card-body">
                     <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                         <input type="hidden" name="action" value="update_password">
 
                         <div class="form-control-wrap">

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -27,6 +28,7 @@ $error = '';
 
 // Handle Manual Referral to Doctor
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'refer_patient') {
+    csrf_guard();
     $child_id = (int) $_POST['child_id'];
     $reason = trim($_POST['referral_reason']);
 
@@ -57,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Log Vitals Form Submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'log_vitals') {
+    csrf_guard();
     $child_id = (int) ($_POST['child_id'] ?? 0);
     $temperature = floatval($_POST['temperature'] ?? 0);
     $heart_rate = intval($_POST['heart_rate'] ?? 0);
@@ -919,6 +922,7 @@ $current_date = date('d M, Y');
             </div>
 
             <form method="POST" action="" id="vitalsForm">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="log_vitals">
 
                 <div class="field-group" style="margin-bottom:18px;">
@@ -1126,6 +1130,7 @@ $current_date = date('d M, Y');
             </div>
 
             <form method="POST" action="">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="refer_patient">
                 <input type="hidden" name="child_id" id="modal_refer_child_id">
 

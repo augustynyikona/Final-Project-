@@ -1,7 +1,9 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 require_once '../api/mail_helper.php';
+require_once '../config/app_url.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -41,6 +43,7 @@ $stmt = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC");
 $vaccines = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_guard();
     $guardian_name  = trim($_POST['guardian_name'] ?? '');
     $guardian_phone = trim($_POST['guardian_phone'] ?? '');
     $guardian_email = trim($_POST['guardian_email'] ?? '');
@@ -114,20 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // 4. Generate & Log SMS / WhatsApp invitation link
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $host_only = explode(':', $host)[0];
-            if ($host_only === 'localhost' || $host_only === '127.0.0.1') {
-                $lan_ip = gethostbyname(gethostname());
-                if (!empty($lan_ip) && $lan_ip !== '127.0.0.1' && $lan_ip !== gethostname()) {
-                    $port = (strpos($host, ':') !== false) ? ':' . explode(':', $host)[1] : '';
-                    $host = $lan_ip . '.nip.io' . $port;
-                }
-            } elseif (filter_var($host_only, FILTER_VALIDATE_IP)) {
-                $port = (strpos($host, ':') !== false) ? ':' . explode(':', $host)[1] : '';
-                $host = $host_only . '.nip.io' . $port;
-            }
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-            $login_url = "{$protocol}{$host}/SchoolProject/SchoolProject2/auth/login.php?phone=" . urlencode($guardian_phone);
+            $login_url = app_login_url('phone=' . urlencode($guardian_phone));
             
             $wa_text = "Hello *{$guardian_name}*,\n\n"
                      . "Welcome to VaxiCare! Your infant *{$child_name}* has been successfully registered by Nurse {$nurse_name}.\n\n"
@@ -614,6 +604,7 @@ $current_date = date('d M, Y');
 
             <div class="reg-card">
                 <form method="POST" action="" id="registrationForm">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     
                     <!-- Section 1: Guardian Credentials -->
                     <div class="section-header">

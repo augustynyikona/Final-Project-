@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../admin/login.php");
@@ -20,6 +21,7 @@ $admin_phone = $admin_profile['phone'] ?? '0970000001';
 
 // Handle Password Change
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_password') {
+    csrf_guard();
     $current_pass = $_POST['current_password'] ?? '';
     $new_pass     = $_POST['new_password'] ?? '';
     $confirm_pass = $_POST['confirm_password'] ?? '';
@@ -44,17 +46,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+// Load persisted facility settings (defaults only if the table is empty)
+$facility_settings = [];
+try {
+    foreach ($pdo->query("SELECT setting_key, setting_value FROM app_settings") as $row) {
+        $facility_settings[$row['setting_key']] = $row['setting_value'];
+    }
+} catch (Throwable $e) { /* app_settings not created yet */ }
+$fs = fn(string $k, string $d = '') => htmlspecialchars($facility_settings[$k] ?? $d, ENT_QUOTES, 'UTF-8');
+
 // Handle Facility Settings Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_facility') {
+    csrf_guard();
     $hospital_name = trim($_POST['hospital_name'] ?? '');
     $facility_code = trim($_POST['facility_code'] ?? '');
     $contact_email = trim($_POST['contact_email'] ?? '');
     $contact_phone = trim($_POST['contact_phone'] ?? '');
+    $location      = trim($_POST['location'] ?? '');
 
-    if (!empty($hospital_name)) {
-        $success = "Hospital facility parameters and security policies saved successfully.";
-    } else {
+    if (empty($hospital_name)) {
         $error = "Hospital facility name cannot be empty.";
+    } else {
+        $pairs = [
+            'facility_name'    => $hospital_name,
+            'facility_code'    => $facility_code,
+            'facility_email'   => $contact_email,
+            'facility_phone'   => $contact_phone,
+            'facility_address' => $location,
+        ];
+        try {
+            $pdo->beginTransaction();
+            $upsert = $pdo->prepare("INSERT INTO app_settings (setting_key, setting_value) VALUES (?, ?)
+                                     ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+            foreach ($pairs as $k => $v) {
+                $upsert->execute([$k, $v]);
+            }
+            $pdo->commit();
+            audit_log($pdo, 'settings.facility_updated', 'setting', null, $hospital_name);
+            $success = "Hospital facility parameters saved successfully.";
+            $facility_settings = array_merge($facility_settings, $pairs);
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            $error = "Could not save facility settings: " . $e->getMessage();
+        }
     }
 }
 
@@ -147,8 +181,11 @@ $unread_msg_count = $stmt->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -231,6 +268,7 @@ $unread_msg_count = $stmt->fetchColumn();
                 </div>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="update_password">
 
                     <!-- Admin Phone / ID (Locked) -->
@@ -318,6 +356,7 @@ $unread_msg_count = $stmt->fetchColumn();
                 </div>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="save_facility">
 
                     <div class="form-group" style="margin-bottom:18px;">
@@ -325,7 +364,7 @@ $unread_msg_count = $stmt->fetchColumn();
                             Healthcare Facility Name
                         </label>
                         <div class="input-field-group">
-                            <input type="text" name="hospital_name" class="modern-field" value="Arthur Davison Children's Hospital" required>
+                            <input type="text" name="hospital_name" class="modern-field" value="<?= $fs('facility_name', 'VaxiCare Health Centre') ?>" required>
                             <i class="fa-solid fa-building-shield field-icon"></i>
                         </div>
                     </div>
@@ -335,7 +374,7 @@ $unread_msg_count = $stmt->fetchColumn();
                             Ministry of Health (MOH) Code
                         </label>
                         <div class="input-field-group">
-                            <input type="text" name="facility_code" class="modern-field" value="ADCH-NDL-2026" style="font-family:monospace; font-weight:700; color:var(--adm-blue);">
+                            <input type="text" name="facility_code" class="modern-field" value="<?= $fs('facility_code', 'VXC-NDL-001') ?>" style="font-family:monospace; font-weight:700; color:var(--adm-blue);">
                             <i class="fa-solid fa-id-card field-icon"></i>
                         </div>
                     </div>
@@ -345,7 +384,7 @@ $unread_msg_count = $stmt->fetchColumn();
                             Official Clinic Support Email
                         </label>
                         <div class="input-field-group">
-                            <input type="email" name="contact_email" class="modern-field" value="support@adch.gov.zm">
+                            <input type="email" name="contact_email" class="modern-field" value="<?= $fs('facility_email', 'admin@vaxicare.local') ?>">
                             <i class="fa-solid fa-envelope field-icon"></i>
                         </div>
                     </div>
@@ -355,7 +394,7 @@ $unread_msg_count = $stmt->fetchColumn();
                             Provincial Ward Location
                         </label>
                         <div class="input-field-group">
-                            <input type="text" name="location" class="modern-field" value="Ndola Central, Copperbelt Province, Zambia">
+                            <input type="text" name="location" class="modern-field" value="<?= $fs('facility_address', 'Ndola Central Ward, Copperbelt, Zambia') ?>">
                             <i class="fa-solid fa-location-dot field-icon"></i>
                         </div>
                     </div>

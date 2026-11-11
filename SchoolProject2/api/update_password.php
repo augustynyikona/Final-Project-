@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 header('Content-Type: application/json');
 
@@ -12,6 +13,12 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = $_SESSION['user_id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // JSON-aware CSRF check: never emit an HTML 419 page to a fetch() caller.
+    $tok = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    if (!is_string($tok) || !hash_equals(csrf_token(), $tok)) {
+        echo json_encode(['success' => false, 'message' => 'Security token expired. Reload and try again.']);
+        exit;
+    }
     $current_pass = $_POST['current_password'] ?? '';
     $new_pass     = $_POST['new_password'] ?? '';
     $confirm_pass = $_POST['confirm_password'] ?? '';
@@ -21,10 +28,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if (strlen($new_pass) < 6) {
-        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters.']);
-        exit;
-    }
+    if (($pw_problem = password_problem($new_pass)) !== null) {
+    echo json_encode(['success' => false, 'message' => $pw_problem]);
+    exit;
+  }
 
     if ($new_pass !== $confirm_pass) {
         echo json_encode(['success' => false, 'message' => 'New password and confirmation do not match.']);

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -24,6 +25,7 @@ $error = '';
 
 // Handle Submit Requisition
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'submit_requisition') {
+    csrf_guard();
     $shift_date = date('Y-m-d');
     
     try {
@@ -523,6 +525,7 @@ $current_date = date('d M, Y');
                 </div>
 
                 <form method="POST" action="" onsubmit="return validateRequisitionForm()">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="submit_requisition">
 
                     <div style="overflow-x:auto;">

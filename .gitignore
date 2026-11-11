@@ -42,3 +42,11 @@ ehthumbs.db
 hs_err_pid*.log
 scratch/
 **/scratch/
+
+# --- secrets (added 2026-11-11) ---
+.env
+.env.*
+!.env.example
+*.env
+!*.env.example
+config/.env

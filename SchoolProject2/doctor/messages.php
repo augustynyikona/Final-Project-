@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
     $_SESSION['role'] = 'doctor';
@@ -25,6 +26,7 @@ $error   = '';
 
 // Handle Send Message
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
+    csrf_guard();
     $send_mode      = $_POST['send_mode'] ?? 'direct';
     $subject        = trim($_POST['subject'] ?? '');
     $body           = trim($_POST['body'] ?? '');
@@ -462,6 +464,7 @@ $unread_msg_count = $unread_count;
 
                 <div class="dr-card-body">
                     <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                         <input type="hidden" name="action" value="send_message">
                         <input type="hidden" name="send_mode" id="sendModeInput" value="direct">
 

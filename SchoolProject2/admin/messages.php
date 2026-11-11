@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -14,10 +15,11 @@ $error   = '';
 
 // Handle Send Broadcast or Direct Message
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'send_message') {
+    csrf_guard();
     $recipient_role = $_POST['recipient_role'] ?? 'all';
     $receiver_id    = isset($_POST['receiver_id']) && !empty($_POST['receiver_id']) ? (int)$_POST['receiver_id'] : NULL;
-    $subject        = trim($_POST['subject']);
-    $body           = trim($_POST['body']);
+    $subject        = trim($_POST['subject'] ?? '');
+    $body           = trim($_POST['body'] ?? '');
 
     if (empty($subject) || empty($body)) {
         $error = "Subject and message body are required.";
@@ -118,8 +120,11 @@ $unread_count    = count(array_filter($inbox, fn($m) => !$m['is_read']));
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item active">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -300,6 +305,7 @@ $unread_count    = count(array_filter($inbox, fn($m) => !$m['is_read']));
                 </div>
 
                 <form method="POST" id="broadcastForm">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="send_message">
                     <input type="hidden" name="send_mode" id="sendModeInput" value="group">
                     

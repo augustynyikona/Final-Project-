@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -14,21 +15,28 @@ $error   = '';
 
 // Handle Onboarding New Admin
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_admin') {
+    csrf_guard();
     $name     = trim($_POST['name'] ?? '');
     $phone    = trim($_POST['phone'] ?? '');
+    $email    = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if (empty($name) || empty($phone) || empty($password)) {
         $error = "All fields are required to onboard a new Administrator.";
+    } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Please provide a valid email address (or leave it blank).";
+    } elseif (($pw_problem = password_problem($password)) !== '') {
+        $error = $pw_problem;
     } else {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE phone = ?");
-        $stmt->execute([$phone]);
+        $stmt = $pdo->prepare("SELECT id FROM users WHERE phone = ? OR (? <> '' AND email = ?)");
+        $stmt->execute([$phone, $email, $email]);
         if ($stmt->fetch()) {
-            $error = "A user account with this phone number already exists.";
+            $error = "A user account with this phone number or email already exists.";
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (name, phone, password_hash, role, is_on_duty, created_at) VALUES (?, ?, ?, 'admin', 1, NOW())");
-            if ($stmt->execute([$name, $phone, $hash])) {
+            $stmt = $pdo->prepare("INSERT INTO users (name, phone, email, password_hash, role, is_on_duty, created_at) VALUES (?, ?, ?, ?, 'admin', 1, NOW())");
+            if ($stmt->execute([$name, $phone, ($email === '' ? null : $email), $hash])) {
+                audit_log($pdo, 'admin.created', 'user', (int)$pdo->lastInsertId(), $name);
                 $success = "New System Administrator ('" . htmlspecialchars($name) . "') onboarded successfully!";
             } else {
                 $error = "Failed to onboard new Administrator.";
@@ -39,7 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Reset Password for Any User
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reset_password') {
-    $target_user_id = (int)$_POST['target_user_id'];
+    csrf_guard();
+    $target_user_id = (int)($_POST['target_user_id'] ?? 0);
     $new_password   = trim($_POST['new_password'] ?? '');
 
     if (empty($new_password)) {
@@ -60,7 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Delete / Remove User
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_user') {
-    $target_user_id = (int)$_POST['target_user_id'];
+    csrf_guard();
+    $target_user_id = (int)($_POST['target_user_id'] ?? 0);
 
     if ($target_user_id === $admin_id) {
         $error = "Security Restriction: You cannot remove your own active administrator account.";
@@ -72,10 +82,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if ($u_info) {
             $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
             if ($stmt->execute([$target_user_id])) {
+                audit_log($pdo, 'user.deleted', 'user', $target_user_id, $u_info['name'] . ' (' . $u_info['role'] . ')');
                 $success = "User account '" . htmlspecialchars($u_info['name']) . "' (" . ucfirst($u_info['role']) . ") removed from system.";
             } else {
                 $error = "Failed to delete user account.";
             }
+        } else {
+            $error = "That user account no longer exists.";
         }
     }
 }
@@ -83,6 +96,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // Filters & Query
 $role_filter = $_GET['role'] ?? 'all';
 $search      = trim($_GET['search'] ?? '');
+
+// How many child records would cascade-delete with each guardian account.
+$delete_impact = [];
+foreach ($pdo->query("SELECT guardian_id, COUNT(*) AS c FROM children GROUP BY guardian_id") as $r) {
+    $delete_impact[(int)$r['guardian_id']] = (int)$r['c'];
+}
 
 $query = "SELECT id, name, phone, role, is_on_duty, created_at FROM users WHERE 1=1";
 $params = [];
@@ -206,8 +225,11 @@ $unread_msg_count = $stmtMsg->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -421,7 +443,7 @@ $unread_msg_count = $stmtMsg->fetchColumn();
                                         
                                         <!-- Delete / Remove User Button -->
                                         <?php if($u['id'] != $admin_id): ?>
-                                            <button class="ph-btn ph-btn-red ph-btn-sm" style="font-size:11.5px;" onclick="openDeleteModal(<?= $u['id'] ?>, '<?= htmlspecialchars(addslashes($u['name'])) ?>', '<?= $u['role'] ?>')">
+                                            <button class="ph-btn ph-btn-red ph-btn-sm" style="font-size:11.5px;" onclick="openDeleteModal(<?= $u['id'] ?>, '<?= htmlspecialchars(addslashes($u['name'])) ?>', '<?= $u['role'] ?>', <?= (int)($delete_impact[(int)$u['id']] ?? 0) ?>)">
                                                 <i class="fa-solid fa-trash-can"></i> Remove
                                             </button>
                                         <?php endif; ?>
@@ -452,6 +474,7 @@ $unread_msg_count = $stmtMsg->fetchColumn();
             </div>
 
             <form method="POST" class="modal-body-pad">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="create_admin">
                 
                 <div class="modal-field">
@@ -465,8 +488,13 @@ $unread_msg_count = $stmtMsg->fetchColumn();
                 </div>
                 
                 <div class="modal-field">
+                    <label>Email (optional, for alerts and password resets)</label>
+                    <input type="email" name="email" class="modal-input" placeholder="e.g. name@vaxicare.com">
+                </div>
+                
+                <div class="modal-field">
                     <label>Initial Security Password</label>
-                    <input type="password" name="password" class="modal-input" placeholder="Create strong admin password" required>
+                    <input type="password" name="password" class="modal-input" placeholder="Min 8 characters, letters and numbers" minlength="8" required>
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:10px; border-top:1px solid #f1f5f9; padding-top:18px; margin-top:8px;">
@@ -502,6 +530,7 @@ $unread_msg_count = $stmtMsg->fetchColumn();
                 </div>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="reset_password">
                     <input type="hidden" name="target_user_id" id="resetTargetUserId">
                     
@@ -542,9 +571,11 @@ $unread_msg_count = $stmtMsg->fetchColumn();
                     <strong>Warning:</strong> You are about to permanently remove user account:
                     <div style="font-weight:800; font-size:14px; margin-top:6px; color:#7f1d1d;" id="deleteUserName">User</div>
                     <div style="font-size:12px; color:#b91c1c; margin-top:4px;">This action revokes immediate access and cannot be undone.</div>
+                    <div id="deleteCascadeWarning" style="display:none; margin-top:12px; padding-top:12px; border-top:1px dashed #fca5a5; font-weight:700; font-size:12.5px;"></div>
                 </div>
 
                 <form method="POST">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="delete_user">
                     <input type="hidden" name="target_user_id" id="deleteTargetUserId">
 
@@ -564,7 +595,17 @@ $unread_msg_count = $stmtMsg->fetchColumn();
             document.getElementById('resetModal').style.display = 'flex';
         }
 
-        function openDeleteModal(userId, userName, role) {
+        function openDeleteModal(userId, userName, role, impact) {
+  var warn = document.getElementById('deleteCascadeWarning');
+  var n = parseInt(impact || 0, 10);
+  if (n > 0) {
+    var noun = (n === 1) ? 'child record' : 'child records';
+    warn.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i> This will ALSO permanently delete ' + n + ' linked ' + noun + ', plus their appointments, consultations, vitals, prescriptions and growth logs.';
+    warn.style.display = 'block';
+  } else {
+    warn.innerHTML = '';
+    warn.style.display = 'none';
+  }
             document.getElementById('deleteTargetUserId').value = userId;
             document.getElementById('deleteUserName').innerText = userName + ' (' + role.toUpperCase() + ')';
             document.getElementById('deleteModal').style.display = 'flex';

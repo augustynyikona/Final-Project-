@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 // If already logged in, redirect based on role
 if (isset($_SESSION['user_id'])) {
@@ -16,6 +17,7 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_guard();
     $phone    = trim($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
 
@@ -310,6 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <form method="POST" action="">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
             <div class="form-group">
                 <label class="form-label" for="phone">Admin Phone / ID</label>
                 <div class="input-wrapper">

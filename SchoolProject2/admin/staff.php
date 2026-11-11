@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -14,27 +15,43 @@ $error   = '';
 
 // Handle Duty Toggle
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_duty') {
-    $user_id = (int)$_POST['user_id'];
-    $current_duty = (int)$_POST['current_duty'];
-    $new_duty = $current_duty ? 0 : 1;
-    
-    $stmt = $pdo->prepare("UPDATE users SET is_on_duty = ? WHERE id = ?");
-    if ($stmt->execute([$new_duty, $user_id])) {
-        $success = "Staff duty status updated successfully.";
+    csrf_guard();
+    $user_id = (int)($_POST['user_id'] ?? 0);
+
+    // Read the authoritative state from the database — never trust the browser's copy,
+    // which goes stale in a second tab and would flip the opposite way.
+    $stmt = $pdo->prepare("SELECT is_on_duty FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$row) {
+        $error = "That staff member no longer exists.";
     } else {
-        $error = "Failed to update duty status.";
+        $new_duty = ((int)$row['is_on_duty'] === 1) ? 0 : 1;
+        $stmt = $pdo->prepare("UPDATE users SET is_on_duty = ? WHERE id = ?");
+        if ($stmt->execute([$new_duty, $user_id])) {
+            audit_log($pdo, 'duty_toggle', 'user', $user_id, ($new_duty ? 'On duty' : 'Off duty'));
+            $success = "Staff duty status updated successfully.";
+        } else {
+            $error = "Failed to update duty status.";
+        }
     }
 }
 
 // Handle Provision Staff
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_staff') {
-    $name = trim($_POST['name']);
-    $phone = trim($_POST['phone']);
-    $role = $_POST['role'];
-    $temp_pass = trim($_POST['temp_password']);
+    csrf_guard();
+    $name = trim($_POST['name'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $role = $_POST['role'] ?? '';
+    $temp_pass = trim($_POST['temp_password'] ?? '');
 
     if (empty($name) || empty($phone) || empty($role) || empty($temp_pass)) {
         $error = "All fields are required.";
+    } elseif (!valid_staff_role($role)) {
+        $error = "Please choose a valid role: Doctor, Nurse, Pharmacist or Administrator.";
+    } elseif (($pw_problem = password_problem($temp_pass)) !== '') {
+        $error = $pw_problem;
     } else {
         $stmt = $pdo->prepare("SELECT id FROM users WHERE phone = ?");
         $stmt->execute([$phone]);
@@ -44,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $hash = password_hash($temp_pass, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (name, phone, password_hash, role, is_on_duty, created_at) VALUES (?, ?, ?, ?, 1, NOW())");
             if ($stmt->execute([$name, $phone, $hash, $role])) {
+                audit_log($pdo, 'staff.created', 'user', (int)$pdo->lastInsertId(), "{$name} ({$role})");
                 $_SESSION['new_staff_credentials'] = [
                     'name' => $name,
                     'phone' => $phone,
@@ -195,8 +213,11 @@ $unread_msg_count = $stmt->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -437,6 +458,7 @@ $unread_msg_count = $stmt->fetchColumn();
                                     </td>
                                     <td style="text-align:right; white-space:nowrap;">
                                         <form method="POST" style="display:inline;">
+                                            <?= csrf_field() ?>
                                             <input type="hidden" name="action" value="toggle_duty">
                                             <input type="hidden" name="user_id" value="<?= $s['id'] ?>">
                                             <input type="hidden" name="current_duty" value="<?= $s['is_on_duty'] ?>">

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
     $_SESSION['role'] = 'doctor';
@@ -38,6 +39,7 @@ function calculateAge($dob) {
 // Handle status update
 $flash_msg = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['alert_id']) && isset($_POST['action'])) {
+    csrf_guard();
     $alert_id = (int)$_POST['alert_id'];
     $action = $_POST['action'];
     if ($action === 'resolve') {
@@ -412,6 +414,7 @@ $unread_msg_count = (int)$stmt->fetchColumn();
         <!-- Filter & Search Toolbar -->
         <div class="filter-panel">
             <form method="GET" action="critical_alerts.php" style="display: flex; gap: 14px; flex: 1; flex-wrap: wrap;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div class="filter-search-box">
                     <i class="fa-solid fa-magnifying-glass" style="color: #94a3b8; font-size: 14px;"></i>
                     <input type="text" name="search" placeholder="Search by patient name, alert reason, or attending nurse..." value="<?= htmlspecialchars($search_query) ?>">
@@ -539,7 +542,8 @@ $unread_msg_count = (int)$stmt->fetchColumn();
                                                 <i class="fa-solid fa-notes-medical"></i> Profile
                                             </a>
                                             <?php if ($is_pending): ?>
-                                                <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Confirm resolving this critical alert for <?= htmlspecialchars(addslashes($alert['child_name'])) ?>?');">
+                                                <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Confirm resolving this critical alert for <?= htmlspecialchars(addslashes($alert['child_name'])) ?>
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">?');">
                                                     <input type="hidden" name="alert_id" value="<?= $alert['id'] ?>">
                                                     <input type="hidden" name="action" value="resolve">
                                                     <button type="submit" class="dr-btn dr-btn-primary dr-btn-sm" style="background: #05cd99; border-color: #05cd99; color: white;">

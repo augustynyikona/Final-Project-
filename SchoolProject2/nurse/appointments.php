@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -25,6 +26,7 @@ $profile_pic = ($user_profile && !empty($user_profile['profile_pic']))
 
 // Handle Booking New Appointment
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_booking') {
+    csrf_guard();
     $child_id   = (int)($_POST['child_id'] ?? 0);
     $vaccine_id = (int)($_POST['vaccine_id'] ?? 0);
     $appt_date  = $_POST['appointment_date'] ?? '';
@@ -51,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Reschedule Appointment — Smart Shift to Next Free Day
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'reschedule') {
+    csrf_guard();
     $appointment_id = (int)($_POST['appointment_id'] ?? 0);
     $new_date       = $_POST['new_date'] ?? '';
     $new_time       = $_POST['new_time'] ?? '09:00:00';
@@ -121,6 +124,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Status Updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['appointment_id']) && isset($_POST['new_status']) && !isset($_POST['action'])) {
+    csrf_guard();
     $appointment_id = (int)$_POST['appointment_id'];
     $new_status = $_POST['new_status'];
     
@@ -565,6 +569,7 @@ $current_date = date('d M, Y');
         <!-- ===== SEARCH & FILTER TOOLBAR ===== -->
         <div class="filter-bar">
             <form method="GET" action="" style="display:flex; align-items:center; gap:12px; flex:1; flex-wrap:wrap;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div class="search-box-wrap">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" name="search" placeholder="Search by patient, guardian, vaccine lot..." value="<?= htmlspecialchars($search_query) ?>">
@@ -693,6 +698,7 @@ $current_date = date('d M, Y');
                                     <td>
                                         <!-- Quick Status Form -->
                                         <form method="POST" style="display: flex; gap: 6px; align-items: center;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                             <input type="hidden" name="appointment_id" value="<?= $app['id'] ?>">
                                             <select name="new_status" class="status-pill-select">
                                                 <option value="scheduled" <?= $app['status'] == 'scheduled' ? 'selected' : '' ?>>Scheduled</option>
@@ -736,6 +742,7 @@ $current_date = date('d M, Y');
             <p style="font-size: 13px; color: #64748B; margin-bottom: 20px;">Schedule an infant's visit with slot allotment.</p>
 
             <form method="POST" action="">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="create_booking">
 
                 <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -815,6 +822,7 @@ $current_date = date('d M, Y');
             </div>
 
             <form method="POST" action="">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="reschedule">
                 <input type="hidden" name="appointment_id" id="reschedule_appointment_id" value="">
                 <input type="hidden" name="use_smart_date" id="use_smart_date_flag" value="0">

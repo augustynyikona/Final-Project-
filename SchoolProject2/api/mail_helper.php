@@ -1,6 +1,8 @@
 <?php
 // api/mail_helper.php
 
+require_once __DIR__ . '/../config/env.php';
+
 // Adjust path depending on entry point
 $phpmailerDir = __DIR__ . '/PHPMailer/src/';
 require_once $phpmailerDir . 'Exception.php';
@@ -25,17 +27,16 @@ function sendVaxiCareEmail($toEmail, $toName, $subject, $bodyHTML, $altBody = ''
 
     try {
         // Server settings
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        // IMPORTANT: Replace this with the email address that generated the App Password
-        $mail->Username   = 'augustynyikona10@gmail.com'; 
-        $mail->Password   = 'zgqmsxifjhtrjtvx'; 
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
-        $mail->Port       = 465;
+  $mail->isSMTP();
+  $mail->Host       = vax_env('SMTP_HOST', 'smtp.gmail.com');
+  $mail->SMTPAuth   = true;
+  $mail->Username   = vax_env('SMTP_USER');
+  $mail->Password   = vax_env('SMTP_PASS');
+  $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS; // SSL
+  $mail->Port       = (int) vax_env('SMTP_PORT', '465');
 
         // Recipients
-        $mail->setFrom('admin@vaxicare.com', 'VaxiCare System');
+        $mail->setFrom(vax_env('SMTP_FROM', vax_env('SMTP_USER')), vax_env('SMTP_FROM_NAME', 'VaxiCare'));
         $mail->addAddress($toEmail, $toName);
 
         // Content

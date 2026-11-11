@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 require_once '../config/notifications_helper.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
@@ -35,6 +36,7 @@ $active_tab = $_GET['tab'] ?? 'overview';
 // ACTION HANDLERS
 // =========================================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    csrf_guard();
     $action = $_POST['action'];
 
     // 1. SAVE PRESCRIPTION
@@ -906,6 +908,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                     </div>
                     <div class="dr-card-body">
                         <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                             <input type="hidden" name="action" value="add_consultation">
                             
                             <div style="margin-bottom: 16px;">
@@ -950,6 +953,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                     </div>
 
                     <form method="POST" id="prescriptionForm">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                         <input type="hidden" name="action" value="save_prescription">
 
                         <!-- Medication Name with quick presets -->
@@ -1110,6 +1114,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                     </div>
 
                     <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                         <input type="hidden" name="action" value="schedule_review">
 
                         <div class="form-row-2" style="margin-bottom: 14px;">
@@ -1292,6 +1297,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                                                 </button>
                                             <?php elseif ($is_completed && empty($a['is_archived'])): ?>
                                                 <form method="POST" style="display: inline;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                                     <input type="hidden" name="action" value="archive_appointment">
                                                     <input type="hidden" name="appointment_id" value="<?= $a['id'] ?>">
                                                     <button type="submit" class="dr-btn dr-btn-outline dr-btn-sm" style="font-size: 11px; padding: 4px 8px;">
@@ -1361,6 +1367,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                                         <td style="text-align: right;">
                                             <?php if ($vax['status'] == 'completed'): ?>
                                                 <form method="POST" style="display: inline;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                                     <input type="hidden" name="action" value="archive_appointment">
                                                     <input type="hidden" name="appointment_id" value="<?= $vax['id'] ?>">
                                                     <button type="submit" class="dr-btn dr-btn-outline dr-btn-sm" style="font-size: 11px; padding: 4px 8px;">
@@ -1405,6 +1412,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                                         <td style="font-size: 12px; color: #64748b;"><?= $arc['archived_at'] ? date('d M Y, h:i A', strtotime($arc['archived_at'])) : 'Archived' ?></td>
                                         <td style="text-align: right;">
                                             <form method="POST" style="display: inline;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                                 <input type="hidden" name="action" value="unarchive_appointment">
                                                 <input type="hidden" name="appointment_id" value="<?= $arc['id'] ?>">
                                                 <button type="submit" class="dr-btn dr-btn-outline dr-btn-sm" style="font-size: 11px; padding: 4px 10px;">
@@ -1436,6 +1444,7 @@ $initials = strtoupper(substr(trim($patient['name']), 0, 1));
                 </button>
             </div>
             <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="cancel_appointment">
                 <input type="hidden" name="appointment_id" id="modal_appt_id" value="">
 

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'pharmacy') {
     header("Location: ../auth/login.php");
@@ -13,6 +14,7 @@ $error = '';
 
 // Handle fulfilling requisitions with dispatch scheduling
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'approve') {
+    csrf_guard();
     $req_id = $_POST['requisition_id'];
     $dispatch_type  = $_POST['dispatch_type'] ?? 'Immediate';
     $dispatch_time  = !empty($_POST['dispatch_time']) ? $_POST['dispatch_time'] : null;
@@ -833,6 +835,7 @@ $unread_msg_count = $stmt->fetchColumn();
                 </div>
 
                 <form method="POST" id="dispatchForm" action="requisitions.php">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="approve">
                     <input type="hidden" name="requisition_id" id="dispFormReqId">
 

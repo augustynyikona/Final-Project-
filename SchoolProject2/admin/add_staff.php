@@ -1,7 +1,9 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 require_once '../api/mail_helper.php';
+require_once '../config/app_url.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../admin/login.php");
@@ -16,6 +18,7 @@ $created_credential = null;
 
 // Handle Provision New Staff Member
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_staff') {
+    csrf_guard();
     $name      = trim($_POST['name'] ?? '');
     $phone     = trim($_POST['phone'] ?? '');
     $email     = trim($_POST['email'] ?? '');
@@ -26,8 +29,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $error = "All fields (Full Name, Phone, Email, Role, and Password) are required.";
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = "Please provide a valid personal or Gmail address (e.g. name@gmail.com).";
-    } elseif (strlen($temp_pass) < 6) {
-        $error = "Temporary password must be at least 6 characters in length.";
+    } elseif (!valid_staff_role($role)) {
+        $error = "Please choose a valid role: Doctor, Nurse, Pharmacist or Administrator.";
+    } elseif (($pw_problem = password_problem($temp_pass)) !== '') {
+        $error = $pw_problem;
     } else {
         // Check if phone or email already registered
         $stmt = $pdo->prepare("SELECT id, phone, email FROM users WHERE phone = ? OR email = ?");
@@ -44,23 +49,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $hash = password_hash($temp_pass, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (name, phone, email, password_hash, role, is_on_duty, created_at) VALUES (?, ?, ?, ?, ?, 1, NOW())");
             if ($stmt->execute([$name, $phone, $email, $hash, $role])) {
+                audit_log($pdo, 'staff.created', 'user', (int)$pdo->lastInsertId(), "{$name} ({$role})");
                 $roleName = $role === 'pharmacy' ? 'Pharmacist' : ucfirst($role);
 
                 // Prepare URLs and message
-                $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-                $host_only = explode(':', $host)[0];
-                if ($host_only === 'localhost' || $host_only === '127.0.0.1') {
-                    $lan_ip = gethostbyname(gethostname());
-                    if (!empty($lan_ip) && $lan_ip !== '127.0.0.1' && $lan_ip !== gethostname()) {
-                        $port = (strpos($host, ':') !== false) ? ':' . explode(':', $host)[1] : '';
-                        $host = $lan_ip . '.nip.io' . $port;
-                    }
-                } elseif (filter_var($host_only, FILTER_VALIDATE_IP)) {
-                    $port = (strpos($host, ':') !== false) ? ':' . explode(':', $host)[1] : '';
-                    $host = $host_only . '.nip.io' . $port;
-                }
-                $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
-                $login_url = "{$protocol}{$host}/SchoolProject/SchoolProject2/auth/login.php";
+                $login_url = app_login_url();
                 $subject = "Welcome to VaxiCare - {$roleName} Login Credentials";
                 $year = date('Y');
 
@@ -358,8 +351,11 @@ $unread_msg_count = $stmt->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -494,6 +490,7 @@ $unread_msg_count = $stmt->fetchColumn();
                 </div>
 
                 <form method="POST" id="onboardForm">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="create_staff">
 
                     <!-- Role Selection Cards -->

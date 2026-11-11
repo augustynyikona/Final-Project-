@@ -670,6 +670,60 @@ LOCK TABLES `vaccines` WRITE;
 INSERT INTO `vaccines` VALUES (1,'MMR Vaccine','Measles, Mumps, Rubella',122,100,'GlaxoSmithKline'),(2,'HPV Vaccine','Gardasil 9 Human Papillomavirus',15,120,'Merck & Co'),(3,'Flu Vaccine','Quadrivalent Influenza Vaccine',10,150,'Sanofi Pasteur'),(4,'RotaVirus Vaccine','Rotarix Oral Suspension',18,100,'GSK Biologicals'),(5,'Yellow Fever Vaccine','Live attenuated yellow fever',0,50,'Sanofi Pasteur'),(6,'Typhoid Vaccine','Typhoid Vi polysaccharide',0,50,'Bharat Biotech'),(7,'DPT Vaccine','Diphtheria, Pertussis, Tetanus',499,100,'Serum Institute'),(8,'Measles Vaccine','Live Attenuated Measles Doses',500,100,'WHO Prequalified'),(9,'BCG Vaccine','Tuberculosis Protection',710,150,'Statens Serum Institut'),(10,'OPV (Oral Polio)','Bivalent Oral Poliovirus',989,200,'Bio-Med Pvt Ltd'),(11,'Hepatitis B Vaccine','Recombinant HepB Vaccine',380,80,'Sanofi'),(12,'Vitamin A Supplement','High-potency Vitamin A Capsules',650,100,'UNICEF Global'),(13,'PCV (Pneumococcal)','Protects against pneumonia, meningitis, and bacteremia.',500,50,'MCH Standard'),(14,'Pentavalent (DPT-HepB-Hib)','Protects against Diphtheria, Pertussis, Tetanus, Hepatitis B, and Hib.',500,50,'MCH Standard');
 /*!40000 ALTER TABLE `vaccines` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Table structure for table `audit_logs`
+-- Added 2026-11-11: backs admin/audit_logs.php (security + accountability log).
+--
+
+DROP TABLE IF EXISTS `audit_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `audit_logs` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `actor_id` int(11) DEFAULT NULL,
+  `actor_name` varchar(100) DEFAULT NULL,
+  `actor_role` varchar(20) DEFAULT NULL,
+  `action` varchar(60) NOT NULL,
+  `target_type` varchar(40) DEFAULT NULL,
+  `target_id` int(11) DEFAULT NULL,
+  `details` varchar(500) DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_audit_created` (`created_at`),
+  KEY `idx_audit_actor` (`actor_id`),
+  KEY `idx_audit_action` (`action`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `app_settings`
+-- Added 2026-11-11: key/value store behind admin/settings.php so facility
+-- details persist instead of silently discarding the save.
+--
+
+DROP TABLE IF EXISTS `app_settings`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `app_settings` (
+  `setting_key` varchar(60) NOT NULL,
+  `setting_value` text DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`setting_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `app_settings`
+--
+
+LOCK TABLES `app_settings` WRITE;
+/*!40000 ALTER TABLE `app_settings` DISABLE KEYS */;
+INSERT INTO `app_settings` (`setting_key`, `setting_value`) VALUES ('facility_name','VaxiCare Health Centre'),('facility_code','VXC-NDL-001'),('facility_address','Ndola Central Ward, Copperbelt'),('facility_phone',''),('facility_email',''),('facility_currency','ZMW'),('facility_timezone','Africa/Lusaka');
+/*!40000 ALTER TABLE `app_settings` ENABLE KEYS */;
+UNLOCK TABLES;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

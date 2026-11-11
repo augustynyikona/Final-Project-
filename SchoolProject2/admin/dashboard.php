@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once '../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: ../auth/login.php");
@@ -12,58 +13,20 @@ $admin_name = $_SESSION['name'];
 $success = '';
 $error   = '';
 
-// Handle Duty Toggle
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'toggle_duty') {
-    $user_id = (int)$_POST['user_id'];
-    $current_duty = (int)$_POST['current_duty'];
-    $new_duty = $current_duty ? 0 : 1;
-    
-    $stmt = $pdo->prepare("UPDATE users SET is_on_duty = ? WHERE id = ?");
-    if ($stmt->execute([$new_duty, $user_id])) {
-        $success = "Staff duty status updated successfully.";
-    } else {
-        $error = "Failed to update duty status.";
-    }
-}
-
-// Handle Provision Staff
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_staff') {
-    $name = trim($_POST['name']);
-    $phone = trim($_POST['phone']);
-    $role = $_POST['role'];
-    $temp_pass = trim($_POST['temp_password']);
-
-    if (empty($name) || empty($phone) || empty($role) || empty($temp_pass)) {
-        $error = "All fields are required.";
-    } else {
-        $stmt = $pdo->prepare("SELECT id FROM users WHERE phone = ?");
-        $stmt->execute([$phone]);
-        if ($stmt->fetch()) {
-            $error = "A user account with this phone number already exists.";
-        } else {
-            $hash = password_hash($temp_pass, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (name, phone, password_hash, role, is_on_duty, created_at) VALUES (?, ?, ?, ?, 1, NOW())");
-            if ($stmt->execute([$name, $phone, $hash, $role])) {
-                $_SESSION['new_staff_credentials'] = [
-                    'name' => $name,
-                    'phone' => $phone,
-                    'role' => ucfirst($role),
-                    'password' => $temp_pass
-                ];
-                $success = "New " . ucfirst($role) . " account created successfully! Temporary credentials generated.";
-            } else {
-                $error = "Failed to create staff account.";
-            }
-        }
-    }
-}
-
 // Fetch Staff Counts
 $total_doctors     = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'doctor'")->fetchColumn();
 $total_nurses      = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'nurse'")->fetchColumn();
 $total_pharmacists = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'pharmacy'")->fetchColumn();
 $total_guardians   = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'guardian'")->fetchColumn();
-$total_children    = $pdo->query("SELECT COUNT(*) FROM children")->fetchColumn();
+$total_children  = $pdo->query("SELECT COUNT(*) FROM children")->fetchColumn();
+
+// Doses administered this calendar month (completed appointments)
+$doses_this_month = (int)$pdo->query(
+    "SELECT COUNT(*) FROM appointments
+      WHERE status = 'completed'
+        AND YEAR(appointment_date) = YEAR(CURDATE())
+        AND MONTH(appointment_date) = MONTH(CURDATE())"
+)->fetchColumn();;
 
 $on_duty_count     = $pdo->query("SELECT COUNT(*) FROM users WHERE role IN ('doctor', 'nurse', 'pharmacy') AND is_on_duty = 1")->fetchColumn();
 $total_staff       = $total_doctors + $total_nurses + $total_pharmacists;
@@ -170,8 +133,11 @@ $unread_msg_count = $stmt->fetchColumn();
             </a>
 
             <div class="sidebar-section-title">Governance</div>
+            <a href="audit_logs.php" class="sidebar-item">
+                <i class="fa-solid fa-clipboard-list"></i> Audit Logs
+            </a>
             <a href="reports.php" class="sidebar-item">
-                <i class="fa-solid fa-chart-pie"></i> Audit Logs
+                <i class="fa-solid fa-chart-pie"></i> Reports &amp; Analytics
             </a>
             <a href="messages.php" class="sidebar-item">
                 <i class="fa-regular fa-envelope"></i> Broadcasts
@@ -448,7 +414,7 @@ $unread_msg_count = $stmt->fetchColumn();
                     <i class="fa-solid fa-ellipsis mar-card-options"></i>
                 </div>
 
-                <div class="chart-header-metric">1,420 Doses</div>
+                <div class="chart-header-metric"><?= number_format($doses_this_month) ?> Dose<?= $doses_this_month === 1 ? '' : 's' ?></div>
 
                 <div class="line-chart">
                     <svg class="line-chart-svg" viewBox="0 0 300 90" preserveAspectRatio="none">

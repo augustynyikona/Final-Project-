@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'pharmacy') {
     header("Location: ../auth/login.php");
@@ -13,6 +14,7 @@ $error   = '';
 
 // Process Payment Action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'pay_invoice') {
+    csrf_guard();
     $invoice_id = $_POST['invoice_id'];
     $payment_method = $_POST['payment_method'] ?? 'Card Payment';
     
@@ -26,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Process Create Invoice Action
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'create_invoice') {
+    csrf_guard();
     $guardian_id    = (int)($_POST['guardian_id'] ?? 0);
     $amount_due     = (float)($_POST['amount_due'] ?? 0);
     $admission_date = $_POST['admission_date'] ?? date('Y-m-d');
@@ -725,6 +728,7 @@ $unread_msg_count = $stmt->fetchColumn();
                 </div>
 
                 <form method="POST" id="paymentForm" action="billing.php" onsubmit="handlePaymentSubmit(event)">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="pay_invoice">
                     <input type="hidden" name="invoice_id" id="formInvoiceId">
                     <input type="hidden" name="payment_method" id="formPaymentMethod" value="Credit/Debit Card">
@@ -903,6 +907,7 @@ $unread_msg_count = $stmt->fetchColumn();
             
             <div style="padding:24px;">
                 <form method="POST" action="billing.php">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="create_invoice">
 
                     <!-- Patient Selection -->

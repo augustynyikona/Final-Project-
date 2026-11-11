@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -62,6 +63,7 @@ $pending_tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Handle task completion
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'complete_task') {
+    csrf_guard();
     $task_id = (int)$_POST['task_id'];
     $stmt = $pdo->prepare("UPDATE nurse_tasks SET status = 'completed', updated_at = NOW() WHERE id = ?");
     $stmt->execute([$task_id]);
@@ -630,6 +632,7 @@ $completion_rate = $total_today > 0 ? round(($completed_today / $total_today) * 
                                     </td>
                                     <td style="text-align:right;">
                                         <form method="POST" action="" onsubmit="return confirm('Confirm that this clinical order has been completed?');" style="display:inline;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                             <input type="hidden" name="action" value="complete_task">
                                             <input type="hidden" name="task_id" value="<?= $task['id'] ?>">
                                             <button type="submit" class="nr-btn nr-btn-sm nr-btn-emerald">

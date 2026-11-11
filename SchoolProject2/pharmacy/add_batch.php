@@ -2,6 +2,7 @@
 session_start();
 include '../config/db.php';
 
+require_once __DIR__ . '/../config/security.php';
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'pharmacy') {
     header("Location: ../auth/login.php");
     exit;
@@ -13,14 +14,47 @@ $error = '';
 
 // Handle updating stock (Batch insertion)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_batch') {
+    csrf_guard();
     $vaccine_id   = $_POST['vaccine_id'] ?? '';
     $batch_number = trim($_POST['batch_number'] ?? '');
     $quantity     = (int)($_POST['quantity'] ?? 0);
     $expiry_date  = $_POST['expiry_date'] ?? '';
     $supplier_id  = $_POST['supplier_id'] ?? '';
 
+    $quantity = (int)$quantity;
+
+
+    $today = new DateTime('today');
+
+
+    $duplicate = false;
+
+
+    if ((int)$vaccine_id && $batch_number !== '') {
+
+
+        $dup = $pdo->prepare("SELECT COUNT(*) FROM vaccine_batches WHERE vaccine_id = ? AND batch_number = ?");
+
+
+        $dup->execute([(int)$vaccine_id, $batch_number]);
+
+
+        $duplicate = $dup->fetchColumn() > 0;
+
+
+    }
+
+
     if (empty($vaccine_id) || empty($batch_number) || empty($quantity) || empty($expiry_date) || empty($supplier_id)) {
         $error = "All batch details and supplier selections are required.";
+    } elseif ($quantity < 1) {
+        $error = "Quantity must be a whole number greater than zero.";
+    } elseif (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $expiry_date) || !strtotime($expiry_date)) {
+        $error = "Expiry date must be a valid date in YYYY-MM-DD format.";
+    } elseif (new DateTime($expiry_date) < $today) {
+        $error = "Expiry date cannot be in the past — the batch would enter inventory already expired.";
+    } elseif ($duplicate) {
+        $error = "Batch number '" . htmlspecialchars($batch_number) . "' already exists for this vaccine. Use a unique batch number.";
     } else {
         try {
             $pdo->beginTransaction();
@@ -43,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             
             foreach ($requesting_nurses as $nurse) {
                 $msg = "Vaccine " . $nurse['name'] . " has been restocked. You can now fulfill your pending requisition.";
-                $ins_msg = $pdo->prepare("INSERT INTO messages (sender_id, receiver_id, sender_role, recipient_role, subject, message) VALUES (?, ?, 'pharmacy', 'nurse', 'Vaccine Restocked', ?)");
+                $ins_msg = $pdo->prepare("INSERT INTO messages (sender_id, recipient_role, receiver_id, subject, body) VALUES (?, 'nurse', ?, 'Vaccine Restocked', ?)");
                 $ins_msg->execute([$_SESSION['user_id'], $nurse['nurse_id'], $msg]);
             }
 
@@ -600,6 +634,7 @@ $recent_batches = $pdo->query("
                 <div class="intake-card-body">
                     <form method="POST" action="add_batch.php" id="intakeBatchForm">
                         <input type="hidden" name="action" value="add_batch">
+  <?= csrf_field() ?>
 
                         <div class="form-grid-2">
                             <!-- Vaccine Selection -->

@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'pharmacy') {
     header("Location: ../auth/login.php");
@@ -13,15 +14,36 @@ $error = '';
 
 // Handle updating stock (Batch insertion)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add_batch') {
+    csrf_guard();
     $vaccine_id = $_POST['vaccine_id'];
     $batch_number = trim($_POST['batch_number']);
     $quantity = (int) $_POST['quantity'];
     $expiry_date = $_POST['expiry_date'];
     $supplier_id = $_POST['supplier_id'];
 
+    $quantity = (int)$quantity;
+    $expiry_date = trim((string)$expiry_date);
+    $duplicate = false;
+    if ((int)$vaccine_id && $batch_number !== '') {
+        $dupInv = $pdo->prepare("SELECT COUNT(*) FROM vaccine_batches WHERE vaccine_id = ? AND batch_number = ?");
+        $dupInv->execute([(int)$vaccine_id, $batch_number]);
+        $duplicate = $dupInv->fetchColumn() > 0;
+    }
+    $bad_expiry = false;
+    if ($expiry_date !== '') {
+        $parsed = DateTime::createFromFormat('Y-m-d', $expiry_date);
+        $bad_expiry = !$parsed || $parsed->format('Y-m-d') !== $expiry_date
+            || $parsed < new DateTime('today');
+    }
     if (empty($vaccine_id) || empty($batch_number) || empty($quantity) || empty($expiry_date)) {
         $error = "All batch details are required.";
-    } else {
+        } elseif ($quantity < 1) {
+            $error = "Quantity must be a whole number greater than zero.";
+        } elseif ($bad_expiry) {
+            $error = "Expiry date must be a valid future date (YYYY-MM-DD).";
+        } elseif ($duplicate) {
+            $error = "Batch number '" . htmlspecialchars($batch_number) . "' already exists for this vaccine.";
+        } else {
         try {
             $pdo->beginTransaction();
             $stmt = $pdo->prepare("INSERT INTO vaccine_batches (vaccine_id, batch_number, quantity, expiry_date, supplier_id) VALUES (?, ?, ?, ?, ?)");
@@ -39,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle placing an order
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'place_order') {
+    csrf_guard();
     $vaccine_id = $_POST['vaccine_id'];
     $supplier_id = $_POST['supplier_id'];
     $quantity = (int) $_POST['quantity'];
@@ -463,6 +486,7 @@ $pending_requisitions = $pdo->query("SELECT COUNT(*) FROM requisitions WHERE sta
 
             <!-- Search & Filter Bar -->
             <form method="GET" action="inventory.php" style="margin-bottom:20px;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="position:relative; flex-grow:1; min-width:260px;">
                         <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
@@ -572,6 +596,7 @@ $pending_requisitions = $pdo->query("SELECT COUNT(*) FROM requisitions WHERE sta
             </div>
             <div class="modal-body-pad">
                 <form method="POST" action="inventory.php">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="add_batch">
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
@@ -633,6 +658,7 @@ $pending_requisitions = $pdo->query("SELECT COUNT(*) FROM requisitions WHERE sta
             </div>
             <div class="modal-body-pad">
                 <form method="POST" id="modalOrderForm">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="place_order">
 
                     <!-- Item Name -->

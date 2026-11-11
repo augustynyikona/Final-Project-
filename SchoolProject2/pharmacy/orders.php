@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'pharmacy') {
     header("Location: ../auth/login.php");
@@ -12,6 +13,7 @@ $success = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'place_order') {
+    csrf_guard();
     $vaccine_id         = $_POST['vaccine_id'] ?? '';
     $supplier_id        = $_POST['supplier_id'] ?? '';
     $quantity           = (int)($_POST['quantity'] ?? 0);
@@ -735,6 +737,7 @@ $chemopharm_orders_count = $pdo->query("SELECT COUNT(*) FROM purchase_orders po 
             <!-- Body -->
             <div style="padding:24px;">
                 <form method="POST" id="modalOrderForm" action="orders.php">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="place_order">
 
                     <!-- Vaccine Name -->

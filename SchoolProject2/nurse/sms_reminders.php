@@ -1,6 +1,7 @@
 <?php
 session_start();
 include __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -24,6 +25,7 @@ $error = '';
 
 // Handle Dispatching Batch SMS via Engine
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'dispatch_sms') {
+    csrf_guard();
     
     // Complex query to find all applicable appointments for the 4 tiers of reminders
     $sql = "
@@ -100,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle Direct Quick SMS Dispatch
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'quick_sms') {
+    csrf_guard();
     $phone = trim($_POST['phone'] ?? '');
     $message = trim($_POST['message'] ?? '');
     $appt_id = !empty($_POST['appointment_id']) ? (int)$_POST['appointment_id'] : null;
@@ -603,6 +606,7 @@ $current_date = date('d M, Y');
                         <span class="live-pulse-dot" style="margin-right:6px;"></span> RapidAPI (D7SMS Gateway) Connected
                     </span>
                     <form method="POST" action="" onsubmit="return confirm('Trigger automated SMS reminder engine evaluation for all pending appointments?');">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                         <input type="hidden" name="action" value="dispatch_sms">
                         <button type="submit" class="nr-btn nr-btn-primary" style="padding:9px 20px; font-size:13px; font-weight:800; box-shadow:0 4px 14px rgba(37,99,235,0.3);">
                             <i class="fa-solid fa-play"></i> Run Engine Dispatch Now
@@ -814,6 +818,7 @@ $current_date = date('d M, Y');
             </div>
 
             <form method="POST" action="">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="quick_sms">
 
                 <div class="field-group" style="margin-bottom:16px;">

@@ -1,4 +1,6 @@
 <?php
+require_once __DIR__ . '/env.php';
+
 /**
  * VaxiCare SMS Service Configuration
  * 
@@ -12,25 +14,25 @@ require_once __DIR__ . '/db.php';
 // ==========================================
 // 1. RAPIDAPI D7SMS GATEWAY CREDENTIALS
 // ==========================================
-define('RAPIDAPI_KEY', 'ed6f57c9a9mshbdf7a4dd61f16a8p1fa334jsn3642f91c5200');
-define('RAPIDAPI_APP_ID', '9217789');
-define('RAPIDAPI_APP_NAME', 'Vaxicare');
-define('RAPIDAPI_D7_HOST', 'd7sms.p.rapidapi.com');
+define('RAPIDAPI_KEY', vax_env('RAPIDAPI_KEY'));
+define('RAPIDAPI_APP_ID', vax_env('RAPIDAPI_APP_ID'));
+define('RAPIDAPI_APP_NAME', vax_env('RAPIDAPI_APP_NAME'));
+define('RAPIDAPI_D7_HOST', vax_env('RAPIDAPI_D7_HOST'));
 // D7 Networks Access Token from https://app.d7networks.com (API Tokens page)
-define('D7_TOKEN', ''); 
+define('D7_TOKEN', vax_env('D7_TOKEN')); 
 
 // EasySendSMS Gateway Account (Fallback 1)
-define('RAPIDAPI_HOST', 'easysendsms.p.rapidapi.com');
-define('EASYSENDSMS_USERNAME', 'augustynyikona10@gmail.com');
-define('EASYSENDSMS_PASSWORD', 'ess54895');
-define('EASYSENDSMS_SENDER_ID', 'VaxiCare');
+define('RAPIDAPI_HOST', vax_env('RAPIDAPI_HOST'));
+define('EASYSENDSMS_USERNAME', vax_env('EASYSENDSMS_USERNAME'));
+define('EASYSENDSMS_PASSWORD', vax_env('EASYSENDSMS_PASSWORD'));
+define('EASYSENDSMS_SENDER_ID', vax_env('EASYSENDSMS_SENDER_ID'));
 
 // ==========================================
 // 2. AFRICA'S TALKING GATEWAY CREDENTIALS (RELIABLE BACKUP)
 // ==========================================
-define('AT_USERNAME', 'sandbox');
-define('AT_API_KEY', 'atsk_5780b20f053d81e6c371f900857d74e16eca868d706b692688c7965c8134442e1ba48bd7');
-define('AT_SENDER_ID', 'VaxiCare');
+define('AT_USERNAME', vax_env('AT_USERNAME'));
+define('AT_API_KEY', vax_env('AT_API_KEY'));
+define('AT_SENDER_ID', vax_env('AT_SENDER_ID'));
 
 /**
  * Send an SMS message using RapidAPI Gateway with automatic fallback
@@ -39,7 +41,7 @@ define('AT_SENDER_ID', 'VaxiCare');
  * @param string $message The text message body
  * @param int|null $appointment_id Optional appointment ID for tracking
  * @param string|null $reminder_type Optional reminder type ('1_day', '3_day', '7_day', '2_hour', 'manual')
- * @return array Array with ['success' => bool, 'provider' => string, 'detail' => string]
+ * @return bool True when at least one gateway accepted the message (or a dry run logged it).
  */
 function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null)
 {
@@ -55,6 +57,17 @@ function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null
         $clean_phone = '260' . $digits;
     } else {
         $clean_phone = $digits;
+    }
+
+    // Dry-run: validate + log, never contact a gateway. Enable with SMS_DRY_RUN=1.
+    if (vax_env('SMS_DRY_RUN') === '1') {
+        try {
+            $stmt = $pdo->prepare("INSERT INTO sms_logs (appointment_id, recipient_phone, message, reminder_type, status, sent_at) VALUES (?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$appointment_id, $clean_phone, $message, $reminder_type, 'DryRun']);
+        } catch (Exception $e) {
+            // never let logging break a reminder run
+        }
+        return true;
     }
 
     $is_success = false;
@@ -85,7 +98,8 @@ function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null
         curl_setopt($ch, CURLOPT_POSTFIELDS, $d7_payload);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'X-RapidAPI-Key: ' . RAPIDAPI_KEY,
             'X-RapidAPI-Host: ' . RAPIDAPI_D7_HOST,
@@ -126,7 +140,8 @@ function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_fields);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'X-RapidAPI-Key: ' . RAPIDAPI_KEY,
             'X-RapidAPI-Host: ' . RAPIDAPI_HOST,
@@ -153,7 +168,7 @@ function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null
     // Gateway Attempt 2: Africa's Talking Gateway (Automated Fallback)
     // ----------------------------------------------------
     if (!$is_success && defined('AT_API_KEY') && !empty(AT_API_KEY)) {
-        $at_url = 'https://api.sandbox.africastalking.com/version1/messaging';
+        $at_url = vax_env('AT_HOST', 'https://api.sandbox.africastalking.com') . '/version1/messaging';
         $at_phone = '+' . $clean_phone;
 
         $ch = curl_init($at_url);
@@ -165,7 +180,8 @@ function sendSMS($phone, $message, $appointment_id = null, $reminder_type = null
         ]));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 8);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+  curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'apiKey: ' . AT_API_KEY,
             'Accept: application/json',

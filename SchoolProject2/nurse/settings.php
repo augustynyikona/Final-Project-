@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'nurse') {
     header("Location: ../auth/login.php");
@@ -28,6 +29,7 @@ $success_message = '';
 $error_message = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_guard();
     $action = $_POST['action'] ?? '';
     
     if ($action === 'update_profile') {
@@ -478,6 +480,7 @@ $current_date = date('l, d F Y');
                 </div>
 
                 <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="update_password">
 
                     <div style="margin-bottom: 18px;">
@@ -549,6 +552,7 @@ $current_date = date('l, d F Y');
                 </div>
 
                 <form method="POST">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                     <input type="hidden" name="action" value="update_profile">
 
                     <div style="margin-bottom: 18px;">

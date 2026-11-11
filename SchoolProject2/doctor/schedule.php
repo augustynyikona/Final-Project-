@@ -1,6 +1,7 @@
 <?php
 session_start();
 include '../config/db.php';
+require_once __DIR__ . '/../config/security.php';
 
 // Doctor Authentication Guard
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
@@ -25,6 +26,7 @@ $error_msg = '';
 
 // Handle Status Update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_status') {
+    csrf_guard();
     $appt_id = (int)($_POST['appointment_id'] ?? 0);
     $new_status = $_POST['status'] ?? '';
     if ($appt_id > 0 && in_array($new_status, ['scheduled', 'confirmed', 'completed', 'cancelled', 'no-show'])) {
@@ -39,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Handle New Appointment Submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'new_appointment') {
+    csrf_guard();
     $child_id = (int)($_POST['child_id'] ?? 0);
     $vaccine_id = (int)($_POST['vaccine_id'] ?? 0);
     $appt_date = $_POST['appointment_date'] ?? null;
@@ -755,6 +758,7 @@ $all_vaccines = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC")->
                                     <!-- Status & Quick Action Form -->
                                     <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
                                         <form method="POST" style="margin: 0;">
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                             <input type="hidden" name="action" value="update_status">
                                             <input type="hidden" name="appointment_id" value="<?= $apt['appointment_id'] ?>">
                                             <select name="status" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700; border: 1.5px solid #cbd5e1; outline: none; cursor: pointer; background: #ffffff; text-transform: uppercase;">
@@ -799,7 +803,8 @@ $all_vaccines = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC")->
                 </button>
             </div>
 
-            <form method="POST" action="schedule.php?date=<?= htmlspecialchars($selected_date) ?>">
+            <form method="POST" action="schedule.php?date=<?= htmlspecialchars($selected_date) ?>
+<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">">
                 <input type="hidden" name="action" value="new_appointment">
                 <div class="dr-modal-body">
                     
