@@ -33,7 +33,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $appt_time  = $_POST['appointment_time'] ?? '09:00:00';
     $notes      = trim($_POST['notes'] ?? '');
 
-    if ($child_id > 0 && $vaccine_id > 0 && !empty($appt_date)) {
+    $date_problem = appointment_date_problem($appt_date);
+    if ($date_problem !== '') {
+        $error = $date_problem;
+    } elseif ($child_id > 0 && $vaccine_id > 0 && !empty($appt_date)) {
         $stmt = $pdo->prepare("INSERT INTO appointments (child_id, vaccine_id, appointment_date, appointment_time, status, notes) VALUES (?, ?, ?, ?, 'scheduled', ?)");
         if ($stmt->execute([$child_id, $vaccine_id, $appt_date, $appt_time, $notes])) {
             $new_appt_id = $pdo->lastInsertId();
@@ -77,7 +80,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
 
-    if ($appointment_id > 0 && !empty($new_date)) {
+    $date_problem = appointment_date_problem($new_date);
+    if ($date_problem !== '') {
+        $error = $date_problem;
+    } elseif ($appointment_id > 0 && !empty($new_date)) {
         $stmt = $pdo->prepare("SELECT child_id, vaccine_id, notes FROM appointments WHERE id = ?");
         $stmt->execute([$appointment_id]);
         $old_appt = $stmt->fetch(PDO::FETCH_ASSOC);

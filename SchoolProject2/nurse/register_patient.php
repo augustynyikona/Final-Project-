@@ -172,6 +172,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($email_sent) {
                 $success .= " An onboarding email was dispatched to <strong>" . htmlspecialchars($guardian_email) . "</strong>.";
             }
+            // Tell the nurse when a requested initial appointment was not created, and why.
+            if (!empty($initial_vaccine_id) && !$appt_created) {
+                $skip_reason = ($appt_date_problem !== '') ? $appt_date_problem : 'no appointment date was supplied';
+                $success .= " <strong>The initial vaccine appointment was not booked:</strong> " . htmlspecialchars($skip_reason) . ".";
+            }
 
             // Post-commit: Log onboarding invitation SMS (safe & non-blocking)
             try {
