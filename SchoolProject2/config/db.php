@@ -1,9 +1,10 @@
 <?php
 // Database configuration (supports environment variables or local fallback)
-$host   = getenv('DB_HOST') ?: '127.0.0.1';
-$dbname = getenv('DB_NAME') ?: 'vaxicare';
-$user   = getenv('DB_USER') ?: 'root';
-$pass   = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+require_once __DIR__ . '/env.php';
+$host   = vax_env('DB_HOST', '127.0.0.1');
+$dbname = vax_env('DB_NAME', 'vaxicare');
+$user   = vax_env('DB_USER', 'root');
+$pass   = vax_env('DB_PASS', '');
 
 try {
     $dsn = "mysql:host=$host;dbname=$dbname;charset=utf8mb4";
