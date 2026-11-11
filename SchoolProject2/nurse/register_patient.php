@@ -30,7 +30,7 @@ $profile_pic = ($user_profile && !empty($user_profile['profile_pic']))
     : "https://ui-avatars.com/api/?name=" . urlencode($nurse_name) . "&background=2563eb&color=fff&bold=true";
 
 // Fetch unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$_SESSION['user_id']]);
 $unread_msg_count = (int)$stmt->fetchColumn();
 
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $log_appt_id = ($appt_created && !empty($appt_id)) ? $appt_id : null;
                 $stmt = $pdo->prepare("INSERT INTO sms_logs (appointment_id, recipient_phone, message, status) VALUES (?, ?, ?, 'Sent')");
-                $stmt->execute([$log_appt_id, $guardian_phone, $wa_text]);
+                $stmt->execute([$log_appt_id, $guardian_phone_clean ?: $guardian_phone, $wa_text]);
             } catch (Exception $sms_err) {
                 error_log("sms_logs insert skipped: " . $sms_err->getMessage());
             }

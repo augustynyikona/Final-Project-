@@ -642,7 +642,7 @@ $current_date = date('l, d F Y');
                                         </div>
                                     </div>
                                     <div class="msg-time-badge">
-                                        <i class="fa-regular fa-clock" style="margin-right:3px;"></i> <?= date('M d, Y &bull; H:i', strtotime($msg['created_at'])) ?>
+                                        <i class="fa-regular fa-clock" style="margin-right:3px;"></i> <?= date('M d, Y', strtotime($msg['created_at'])) ?> &bull; <?= date('H:i', strtotime($msg['created_at'])) ?>
                                     </div>
                                 </div>
 
@@ -701,7 +701,7 @@ $current_date = date('l, d F Y');
                                         </div>
                                     </div>
                                     <div class="msg-time-badge">
-                                        <i class="fa-regular fa-clock" style="margin-right:3px;"></i> <?= date('M d, Y &bull; H:i', strtotime($msg['created_at'])) ?>
+                                        <i class="fa-regular fa-clock" style="margin-right:3px;"></i> <?= date('M d, Y', strtotime($msg['created_at'])) ?> &bull; <?= date('H:i', strtotime($msg['created_at'])) ?>
                                     </div>
                                 </div>
 

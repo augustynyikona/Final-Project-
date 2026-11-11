@@ -486,7 +486,6 @@ $pending_requisitions = $pdo->query("SELECT COUNT(*) FROM requisitions WHERE sta
 
             <!-- Search & Filter Bar -->
             <form method="GET" action="inventory.php" style="margin-bottom:20px;">
-<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <div style="position:relative; flex-grow:1; min-width:260px;">
                         <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>

@@ -83,7 +83,7 @@ $stmt->execute([$child_id]);
 $pending = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR receiver_id IS NULL) AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$nurse_id]);
 $unread_msg_count = $stmt->fetchColumn();
 ?>

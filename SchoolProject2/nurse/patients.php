@@ -62,7 +62,7 @@ $male_count = (int)$pdo->query("SELECT COUNT(*) FROM children WHERE gender = 'Ma
 $female_count = (int)$pdo->query("SELECT COUNT(*) FROM children WHERE gender = 'Female'")->fetchColumn();
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$_SESSION['user_id']]);
 $unread_msg_count = (int)$stmt->fetchColumn();
 

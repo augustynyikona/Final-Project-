@@ -413,7 +413,6 @@ $unread_msg_count = (int)$stmt->fetchColumn();
         <!-- Filter & Search Toolbar -->
         <div class="filter-panel">
             <form method="GET" action="critical_alerts.php" style="display: flex; gap: 14px; flex: 1; flex-wrap: wrap;">
-<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div class="filter-search-box">
                     <i class="fa-solid fa-magnifying-glass" style="color: #94a3b8; font-size: 14px;"></i>
                     <input type="text" name="search" placeholder="Search by patient name, alert reason, or attending nurse..." value="<?= htmlspecialchars($search_query) ?>">

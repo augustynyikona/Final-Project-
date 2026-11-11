@@ -191,7 +191,7 @@ $stmt = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC");
 $all_vaccines = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$_SESSION['user_id']]);
 $unread_msg_count = (int)$stmt->fetchColumn();
 
@@ -575,7 +575,6 @@ $current_date = date('d M, Y');
         <!-- ===== SEARCH & FILTER TOOLBAR ===== -->
         <div class="filter-bar">
             <form method="GET" action="" style="display:flex; align-items:center; gap:12px; flex:1; flex-wrap:wrap;">
-<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <div class="search-box-wrap">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" name="search" placeholder="Search by patient, guardian, vaccine lot..." value="<?= htmlspecialchars($search_query) ?>">

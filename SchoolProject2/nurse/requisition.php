@@ -120,7 +120,7 @@ if (!empty($req_ids)) {
 }
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'nurse' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$nurse_id]);
 $unread_msg_count = (int)$stmt->fetchColumn();
 
