@@ -38,7 +38,7 @@ $stmt = $pdo->query("SELECT COUNT(*) FROM triage_referrals WHERE status = 'pendi
 $pending_alerts = (int)$stmt->fetchColumn();
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'doctor') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'doctor' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$user_id]);
 $unread_msg_count = (int)($stmt->fetchColumn() ?: 0);
 
@@ -591,7 +591,7 @@ $antigen_coverage = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                 <?= htmlspecialchars($act['vaccine_name'] ?? 'Routine Clinical Check') ?>
                                             </p>
                                             <span>
-                                                <?= date('d M Y &bull; H:i', strtotime($act['created_at'])) ?> &bull; 
+                                                <?= date('d M Y', strtotime($act['created_at'])) ?> &bull; <?= date('H:i', strtotime($act['created_at'])) ?> &bull;
                                                 <span style="color: <?= $act['status'] === 'completed' ? '#05CD99' : '#0284c7' ?>; font-weight: 700; text-transform: uppercase;">
                                                     <?= htmlspecialchars($act['status']) ?>
                                                 </span>

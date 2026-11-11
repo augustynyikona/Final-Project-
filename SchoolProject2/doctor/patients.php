@@ -22,7 +22,7 @@ $profile_pic = (!empty($user_profile['profile_pic']))
 
 // Sidebar & Notif Counts
 $pending_alerts = (int)$pdo->query("SELECT COUNT(*) FROM triage_referrals WHERE status = 'pending'")->fetchColumn();
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'doctor') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'doctor' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$user_id]);
 $unread_msg_count = (int)($stmt->fetchColumn() ?: 0);
 
