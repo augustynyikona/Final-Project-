@@ -541,8 +541,8 @@ $unread_msg_count = (int)$stmt->fetchColumn();
                                                 <i class="fa-solid fa-notes-medical"></i> Profile
                                             </a>
                                             <?php if ($is_pending): ?>
-                                                <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Confirm resolving this critical alert for <?= htmlspecialchars(addslashes($alert['child_name'])) ?>
-<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">?');">
+                                                <form method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Confirm resolving this critical alert for <?= htmlspecialchars(addslashes($alert['child_name'])) ?>?');">
+                                                    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                                                     <input type="hidden" name="alert_id" value="<?= $alert['id'] ?>">
                                                     <input type="hidden" name="action" value="resolve">
                                                     <button type="submit" class="dr-btn dr-btn-primary dr-btn-sm" style="background: #05cd99; border-color: #05cd99; color: white;">
