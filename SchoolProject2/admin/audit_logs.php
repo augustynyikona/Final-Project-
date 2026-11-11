@@ -164,16 +164,16 @@ function action_tint(string $action): array
 
     <main class="app-main">
         <header class="app-topbar">
-            <div style="display:flex; align-items:center;">
+            <div style="display:flex; align-items:center; gap:12px;">
                 <button type="button" class="mobile-nav-toggle" onclick="toggleSidebar(true)" aria-label="Toggle navigation">
                     <i class="fa-solid fa-bars"></i>
                 </button>
-            </div>
-            <div class="topbar-left">
-                <h1>Audit Logs</h1>
-                <div class="topbar-date-pill">
-                    <i class="fa-solid fa-clock-rotate-left"></i>
-                    <span><?= number_format($total_events) ?> recorded governance event<?= $total_events === 1 ? '' : 's' ?></span>
+                <div class="topbar-left">
+                    <h1>Audit Logs</h1>
+                    <div class="topbar-date-pill">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span><?= number_format($total_events) ?> recorded governance event<?= $total_events === 1 ? '' : 's' ?></span>
+                    </div>
                 </div>
             </div>
             <div class="topbar-right">
