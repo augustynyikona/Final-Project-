@@ -29,13 +29,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     csrf_guard();
     $appt_id = (int)($_POST['appointment_id'] ?? 0);
     $new_status = $_POST['status'] ?? '';
-    if ($appt_id > 0 && in_array($new_status, ['scheduled', 'confirmed', 'completed', 'cancelled', 'no-show'])) {
+    $allowed_statuses = ['scheduled', 'confirmed', 'arrived', 'completed', 'cancelled', 'no-show'];
+    if ($appt_id > 0 && in_array($new_status, $allowed_statuses, true)) {
         $stmt = $pdo->prepare("UPDATE appointments SET status = ? WHERE id = ?");
         if ($stmt->execute([$new_status, $appt_id])) {
             $success_msg = "Appointment status updated to " . ucfirst($new_status) . " successfully!";
         } else {
             $error_msg = "Failed to update appointment status.";
         }
+    } else {
+        $error_msg = "That appointment status is not recognised.";
     }
 }
 
@@ -47,7 +50,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $appt_date = $_POST['appointment_date'] ?? null;
     $appt_time = $_POST['appointment_time'] ?? null;
 
-    if ($child_id > 0 && $vaccine_id > 0 && $appt_date && $appt_time) {
+    // Reject malformed and past dates before touching the database.
+    $date_error = '';
+    if (!$appt_date || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $appt_date)) {
+        $date_error = "Please choose a valid appointment date.";
+    } elseif (!checkdate((int)substr($appt_date, 5, 2), (int)substr($appt_date, 8, 2), (int)substr($appt_date, 0, 4))) {
+        $date_error = "That date does not exist.";
+    } elseif ($appt_date < date('Y-m-d')) {
+        $date_error = "Appointments cannot be booked in the past. Please choose today or a future date.";
+    }
+
+    if ($date_error !== '') {
+        $error_msg = $date_error;
+    } elseif ($child_id > 0 && $vaccine_id > 0 && $appt_date && $appt_time) {
         // Optional mother lookup for foreign key consistency if applicable
         $mother_stmt = $pdo->prepare("SELECT id FROM mothers WHERE guardian_id = (SELECT guardian_id FROM children WHERE id = ?) LIMIT 1");
         $mother_stmt->execute([$child_id]);

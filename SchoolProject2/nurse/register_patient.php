@@ -104,7 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // 3. Optional: Create initial vaccine appointment if selected
             $appt_created = false;
             $appt_id = null;
-            if ($initial_vaccine_id && !empty($appointment_date)) {
+            $appt_date_problem = appointment_date_problem($appointment_date);
+            if ($initial_vaccine_id && !empty($appointment_date) && $appt_date_problem === '') {
                 $stmt = $pdo->prepare("INSERT INTO appointments (child_id, vaccine_id, appointment_date, appointment_time, status) VALUES (?, ?, ?, ?, 'scheduled')");
                 $stmt->execute([$child_id, $initial_vaccine_id, $appointment_date, $appointment_time]);
                 $appt_id = $pdo->lastInsertId();

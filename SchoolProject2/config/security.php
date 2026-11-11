@@ -97,3 +97,22 @@ function audit_log(PDO $pdo, string $action, string $targetType = '', ?int $targ
         error_log('audit_log failed: ' . $e->getMessage());
     }
 }
+
+/**
+ * Returns an error string if the appointment date is unusable, or '' if fine.
+ * Blocks malformed, non-existent and past dates.
+ */
+function appointment_date_problem($date) {
+    $date = trim((string)$date);
+    if ($date === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return "Please choose a valid appointment date.";
+    }
+    [$y, $m, $d] = array_map('intval', explode('-', $date));
+    if (!checkdate($m, $d, $y)) {
+        return "That date does not exist.";
+    }
+    if ($date < date('Y-m-d')) {
+        return "Appointments cannot be booked in the past. Please choose today or a future date.";
+    }
+    return '';
+}

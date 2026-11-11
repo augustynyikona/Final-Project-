@@ -5,9 +5,8 @@ require_once __DIR__ . '/../config/security.php';
 require_once '../config/notifications_helper.php';
 
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'doctor') {
-    $_SESSION['role'] = 'doctor';
-    $_SESSION['name'] = 'Dr. Emily Chen';
-    $_SESSION['user_id'] = 1; // Fallback
+    header("Location: ../auth/login.php");
+    exit;
 }
 $doctor_id = (int)$_SESSION['user_id'];
 
@@ -104,12 +103,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $room = "Doctor Consultation Suite 2";
                 $combined_notes = $review_type . ($review_notes ? " — Note: " . $review_notes : "");
                 
+                $date_problem = appointment_date_problem($review_date);
+                if ($date_problem !== '') {
+                    $error_msg = $date_problem;
+                    $stmt = null;
+                } else {
                 $stmt = $pdo->prepare("
                     INSERT INTO appointments (child_id, vaccine_id, appointment_date, appointment_time, status, room_number, notes, created_at)
                     VALUES (?, NULL, ?, ?, 'scheduled', ?, ?, NOW())
                 ");
                 $stmt->execute([$child_id, $review_date, $review_time, $room, $combined_notes]);
                 $new_appt_id = $pdo->lastInsertId();
+                }
 
                 // Record into consultations table next_review_date
                 $pdo->prepare("INSERT INTO consultations (child_id, doctor_id, notes, next_review_date, created_at) VALUES (?, ?, ?, ?, NOW())")
