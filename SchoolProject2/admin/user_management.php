@@ -130,7 +130,7 @@ $cnt_guardian  = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'guardian'
 $cnt_total     = $cnt_admin + $cnt_doctor + $cnt_nurse + $cnt_pharmacy + $cnt_guardian;
 
 $low_stock_count  = $pdo->query("SELECT COUNT(*) FROM vaccines WHERE current_stock <= low_stock_threshold")->fetchColumn();
-$stmtMsg = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin') AND is_read = 0");
+$stmtMsg = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin' OR recipient_role = 'all') AND is_read = 0");
 $stmtMsg->execute([$admin_id]);
 $unread_msg_count = $stmtMsg->fetchColumn();
 ?>

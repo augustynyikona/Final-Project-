@@ -28,7 +28,7 @@ $total_vials      = array_sum(array_column($vaccines, 'current_stock'));
 $pending_pos      = $pdo->query("SELECT COUNT(*) FROM purchase_orders WHERE status = 'Pending'")->fetchColumn();
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$admin_id]);
 $unread_msg_count = $stmt->fetchColumn();
 ?>

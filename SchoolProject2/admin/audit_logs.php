@@ -54,7 +54,7 @@ try {
 } catch (Throwable $e) { /* ignore */ }
 
 $unread_msg_count = (int)$pdo->query(
-    "SELECT COUNT(*) FROM messages WHERE (receiver_id = {$admin_id} OR recipient_role = 'admin') AND is_read = 0"
+    "SELECT COUNT(*) FROM messages WHERE (receiver_id = {$admin_id} OR recipient_role = 'admin' OR recipient_role = 'all') AND is_read = 0"
 )->fetchColumn();
 $low_stock_count = (int)$pdo->query(
     "SELECT COUNT(*) FROM vaccines WHERE current_stock <= low_stock_threshold"

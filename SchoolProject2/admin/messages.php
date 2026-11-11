@@ -38,7 +38,7 @@ $stmt = $pdo->prepare("
     SELECT m.*, u.name as sender_name, u.role as sender_role
     FROM messages m
     JOIN users u ON m.sender_id = u.id
-    WHERE m.receiver_id = ? OR m.recipient_role = 'admin'
+    WHERE m.receiver_id = ? OR m.recipient_role = 'admin' OR m.recipient_role = 'all'
     ORDER BY m.created_at DESC
 ");
 $stmt->execute([$admin_id]);

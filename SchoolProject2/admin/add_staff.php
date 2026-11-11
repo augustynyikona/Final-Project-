@@ -140,7 +140,7 @@ $recent_staff = $pdo->query("
 ")->fetchAll(PDO::FETCH_ASSOC);
 
 $low_stock_count = $pdo->query("SELECT COUNT(*) FROM vaccines WHERE current_stock <= low_stock_threshold")->fetchColumn();
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$admin_id]);
 $unread_msg_count = $stmt->fetchColumn();
 ?>

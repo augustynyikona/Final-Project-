@@ -44,7 +44,7 @@ $stmt = $pdo->query("
 $staff_members = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Unread messages
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin') AND is_read = 0");
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM messages WHERE (receiver_id = ? OR recipient_role = 'admin' OR recipient_role = 'all') AND is_read = 0");
 $stmt->execute([$admin_id]);
 $unread_msg_count = $stmt->fetchColumn();
 ?>
