@@ -91,17 +91,25 @@ function action_tint(string $action): array
     <link rel="stylesheet" href="../css/mar_tech.css">
     <link rel="stylesheet" href="../css/admin_theme.css">
 </head>
-<body>
-    <aside class="app-sidebar">
-        <div class="sidebar-logo">
-            <i class="fa-solid fa-shield-virus"></i>
-            <div>
-                <h2>VaxCare</h2>
-                <span>ADMIN CONSOLE</span>
-            </div>
+<body class="app-body">
+
+    <!-- Mobile Backdrop Overlay -->
+    <div class="mobile-sidebar-backdrop" id="mobileSidebarBackdrop" onclick="toggleSidebar(false)"></div>
+
+    <aside class="sidebar" id="adminSidebar">
+        <div class="sidebar-brand-box">
+            <a href="dashboard.php" class="sidebar-brand-link">
+                <div class="sidebar-brand-icon">
+                    <i class="fa-solid fa-shield-virus"></i>
+                </div>
+                <div class="sidebar-brand-info">
+                    <span class="sidebar-brand-title">Vax<span>Care</span></span>
+                    <span class="sidebar-brand-sub">Admin Console</span>
+                </div>
+            </a>
         </div>
 
-        <nav class="sidebar-nav">
+        <nav class="sidebar-menu">
             <div class="sidebar-section-title">Overview</div>
             <a href="dashboard.php" class="sidebar-item">
                 <i class="fa-solid fa-table-columns"></i> Dashboard
@@ -156,6 +164,11 @@ function action_tint(string $action): array
 
     <main class="app-main">
         <header class="app-topbar">
+            <div style="display:flex; align-items:center;">
+                <button type="button" class="mobile-nav-toggle" onclick="toggleSidebar(true)" aria-label="Toggle navigation">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
             <div class="topbar-left">
                 <h1>Audit Logs</h1>
                 <div class="topbar-date-pill">
@@ -270,5 +283,20 @@ function action_tint(string $action): array
             Showing the 200 most recent events. Filtered totals reflect all matching rows.
         </p>
     </main>
+
+    <script>
+        function toggleSidebar(force) {
+            const sidebar = document.getElementById('adminSidebar');
+            const backdrop = document.getElementById('mobileSidebarBackdrop');
+            if (!sidebar) return;
+            const isOpen = typeof force === 'boolean' ? force : !sidebar.classList.contains('open');
+            sidebar.classList.toggle('open', isOpen);
+            if (backdrop) backdrop.classList.toggle('show', isOpen);
+        }
+
+        window.addEventListener('resize', () => {
+            if (window.innerWidth > 900) toggleSidebar(false);
+        });
+    </script>
 </body>
 </html>
