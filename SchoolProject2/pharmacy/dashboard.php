@@ -12,6 +12,14 @@ $pharmacist_name = $_SESSION['name'];
 $success = '';
 $error = '';
 
+/*
+ * DISABLED 2026-11-11 (VaxiCare test drive — pharmacy portal).
+ * Unreachable dead code: this page renders no <form> and ships no JavaScript that
+ * posts action=place_order, so nothing can ever reach this branch. The live order
+ * paths are pharmacy/inventory.php and pharmacy/orders.php.
+ * Kept commented rather than deleted in case a dashboard order form is added later;
+ * restore the block and add a matching CSRF-bearing form to re-enable it.
+ *
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'place_order') {
     csrf_guard();
     $vaccine_id = $_POST['vaccine_id'];
@@ -32,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $error = "Please fill all required fields.";
     }
 }
+ */
 
 $vaccines  = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 $suppliers = $pdo->query("SELECT id, name FROM suppliers WHERE status='Active' ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);

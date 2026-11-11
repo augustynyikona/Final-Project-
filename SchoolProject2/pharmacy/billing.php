@@ -18,11 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $invoice_id = $_POST['invoice_id'];
     $payment_method = $_POST['payment_method'] ?? 'Card Payment';
     
-    $stmt = $pdo->prepare("UPDATE invoices SET status = 'Paid' WHERE id = ?");
-    if ($stmt->execute([$invoice_id])) {
+    // Only report success when a row actually changed. UPDATE returns true with zero
+    // rows affected, which previously made a non-existent invoice look paid.
+    $stmt = $pdo->prepare("UPDATE invoices SET status = 'Paid' WHERE id = ? AND status <> 'Paid'");
+    $stmt->execute([(int)$invoice_id]);
+    if ($stmt->rowCount() === 1) {
         $success = "Payment of invoice #INV-" . str_pad($invoice_id, 4, '0', STR_PAD_LEFT) . " processed successfully via " . htmlspecialchars($payment_method) . ".";
     } else {
-        $error = "Failed to process payment.";
+        $error = "Invoice #INV-" . str_pad($invoice_id, 4, '0', STR_PAD_LEFT) . " was not found or is already settled — no payment was recorded.";
     }
 }
 

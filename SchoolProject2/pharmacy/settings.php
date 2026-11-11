@@ -54,8 +54,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = "All password fields are required.";
         } elseif ($new_pwd !== $confirm_pwd) {
             $error_message = "New passwords do not match.";
-        } elseif (strlen($new_pwd) < 6) {
-            $error_message = "New password must be at least 6 characters in length.";
+        } elseif (($pwd_problem = password_problem($new_pwd)) !== '') {
+            // Shared policy (config/security.php): 8+ chars, at least one letter and one number.
+            $error_message = $pwd_problem;
         } else {
             if (password_verify($current_pwd, $user_profile['password_hash'])) {
                 $hashed = password_hash($new_pwd, PASSWORD_DEFAULT);
