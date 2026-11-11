@@ -818,8 +818,8 @@ $all_vaccines = $pdo->query("SELECT id, name FROM vaccines ORDER BY name ASC")->
                 </button>
             </div>
 
-            <form method="POST" action="schedule.php?date=<?= htmlspecialchars($selected_date) ?>
-<input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">">
+            <form method="POST" action="schedule.php?date=<?= htmlspecialchars($selected_date) ?>">
+                <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="new_appointment">
                 <div class="dr-modal-body">
                     
