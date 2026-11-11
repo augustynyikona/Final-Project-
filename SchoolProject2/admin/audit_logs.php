@@ -225,9 +225,10 @@ function action_tint(string $action): array
             <?php endif; ?>
         </form>
 
-        <div style="background:#fff; border:1.5px solid #e2e8f0; border-radius:16px; overflow:hidden;">
+        <div class="table-card-container" style="flex-shrink:0;">
+            <div class="table-responsive" style="max-height:62vh; overflow-y:auto;">
             <table style="width:100%; border-collapse:collapse; font-size:13.5px;">
-                <thead>
+                <thead style="position:sticky; top:0; z-index:2;">
                     <tr style="background:#f8fafc; text-align:left; color:#475569; font-size:11.5px; letter-spacing:.6px; text-transform:uppercase;">
                         <th style="padding:14px 18px;">When</th>
                         <th style="padding:14px 18px;">Actor</th>
@@ -277,6 +278,7 @@ function action_tint(string $action): array
                     <?php endforeach; ?>
                 </tbody>
             </table>
+            </div>
         </div>
 
         <p style="margin:14px 0 40px; color:#94a3b8; font-size:12.5px;">
