@@ -16,7 +16,10 @@ try {
     ];
     $pdo = new PDO($dsn, $user, $pass, $options);
 } catch(PDOException $e) {
-    die("Database connection failed: " . $e->getMessage() . "<br>Please verify database credentials.");
+    // Never echo the driver message: it names the DB user and host to any visitor.
+    error_log('VaxiCare DB connection failed: ' . $e->getMessage());
+    http_response_code(503);
+    die("The service is temporarily unavailable. Please try again shortly.");
 }
 
 require_once __DIR__ . '/notifications_helper.php';
